@@ -89,7 +89,7 @@ func _physics_process(delta: float) -> void:
 
 func _kill_exported_process() -> void:
 	var command = "powershell"
-	var args = ["-Command", "Stop-Process", "-Name", "Invicem2D", "-Force"]
+	var args = ["-Command", "Stop-Process", "-Name", project_name, "-Force"]
 	OS.execute(command, args)
 	OS.execute(command, args)
 	await(get_tree().create_timer(2).timeout)
