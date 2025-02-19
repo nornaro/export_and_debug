@@ -28,6 +28,7 @@ func _enter_tree() -> void:
 
 	button = Button.new()
 	button.text = ">"
+	button.tooltip_text = "Remote Debug (F7)"
 	button.pressed.connect(_on_button_pressed)
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, button)
 
