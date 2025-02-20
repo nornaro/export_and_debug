@@ -34,9 +34,6 @@ func _enter_tree() -> void:
 
 
 func _exit_tree() -> void:
-	if !DirAccess.dir_exists_absolute(base_path):
-		var dir = DirAccess.open(base_path)
-		dir.make_dir("new_directory")
 	set_physics_process(false)
 	remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, button)
 	button.queue_free()
@@ -64,6 +61,9 @@ func _start_export_process() -> void:
 
 # Define the _on_button_pressed function (for button press event)
 func _on_button_pressed() -> void:
+	var command = "powershell"
+	var args = ["mkdir", base_path]
+	OS.execute(command, args)
 	get_editor_interface().stop_playing_scene()
 	_kill_exported_process()
 	_cleanup_previous_exports()
