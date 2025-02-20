@@ -1,8 +1,11 @@
 @tool
 extends EditorPlugin
 
-## Button for starting export process.
+## Button for starting the export process.
 var button: Button
+
+## Process ID for running project 
+var pid: int
 
 ## Whether the export process has started.
 var start: bool = false
@@ -32,47 +35,36 @@ func _enter_tree() -> void:
 	button.pressed.connect(_on_button_pressed)
 	add_control_to_container(EditorPlugin.CONTAINER_TOOLBAR, button)
 
-
 func _exit_tree() -> void:
 	set_physics_process(false)
 	remove_control_from_container(EditorPlugin.CONTAINER_TOOLBAR, button)
 	button.queue_free()
 
-
-# Function to clean up previous exports (called when plugin loads)
+# Function to clean up previous exports (called when the plugin loads)
 func _cleanup_previous_exports() -> void:
-	var cleanup_path = base_path + "*.*"
-	var command = "powershell"
-	var args = ["-Command", "Remove-Item", cleanup_path, "-Force"]
-	var output = []
-	OS.execute(command, args)
+	if DirAccess.dir_exists_absolute(base_path):
+		DirAccess.remove_absolute(base_path)
+	DirAccess.make_dir_recursive_absolute(base_path)
 	set_physics_process(true)
 	start = true
-
 
 # Function to start the export process
 func _start_export_process() -> void:
 	var godot_path = OS.get_executable_path()
 	var export_args = ["--headless", "--export-debug", "debug", base_path + export_path]
 	var res = OS.execute(godot_path, export_args)
-	if res:
+	if res == OK:
 		set_physics_process(false)
-
 
 # Define the _on_button_pressed function (for button press event)
 func _on_button_pressed() -> void:
-	var command = "powershell"
-	var args = ["mkdir", base_path]
-	OS.execute(command, args)
 	get_editor_interface().stop_playing_scene()
 	_kill_exported_process()
 	_cleanup_previous_exports()
 
-
 func _input(event: InputEvent) -> void:
 	if Input.is_physical_key_pressed(KEY_F7):
 		_on_button_pressed()
-
 
 # The _physics_process function to check for .pck file
 func _physics_process(delta: float) -> void:
@@ -83,13 +75,10 @@ func _physics_process(delta: float) -> void:
 		_start_export_process()
 		return
 	start = false
-	OS.create_process(base_path + console_exe, run_args)
+	start = false
+	pid = OS.create_process(base_path + console_exe, run_args)
 	set_physics_process(false)  # Disable physics process after running the exported game
 
-
 func _kill_exported_process() -> void:
-	var command = "powershell"
-	var args = ["-Command", "Stop-Process", "-Name", project_name, "-Force"]
-	OS.execute(command, args)
-	OS.execute(command, args)
+	OS.kill(pid)
 	await(get_tree().create_timer(2).timeout)
