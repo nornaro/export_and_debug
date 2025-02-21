@@ -1,6 +1,7 @@
 @tool
 extends EditorPlugin
 
+@export var export_folder: String = ".Export"
 ## Button for starting the export process.
 var button: Button
 
@@ -25,8 +26,17 @@ var run_args = [
 	"--verbose", "-1",
 ]
 
+func _ready() -> void:
+	set_physics_process(false)
+
 func _enter_tree() -> void:
-	base_path = ProjectSettings.globalize_path("res://") + "Export/"
+	if not ProjectSettings.has_setting("export_folder"):
+		ProjectSettings.set_setting("global/export_folder", export_folder)
+		ProjectSettings.set_initial_value("global/export_folder", export_folder)
+		ProjectSettings.save()
+	export_folder = ProjectSettings.get_setting("global/export_folder")
+	base_path = ProjectSettings.globalize_path("res://") + export_folder + "/"
+
 	set_physics_process(false)
 
 	button = Button.new()
@@ -42,9 +52,10 @@ func _exit_tree() -> void:
 
 # Function to clean up previous exports (called when the plugin loads)
 func _cleanup_previous_exports() -> void:
-	if DirAccess.dir_exists_absolute(base_path):
-		DirAccess.remove_absolute(base_path)
-	DirAccess.make_dir_recursive_absolute(base_path)
+	if !DirAccess.dir_exists_absolute(base_path):
+		DirAccess.make_dir_recursive_absolute(base_path)
+	for file in DirAccess.get_files_at(base_path):
+		DirAccess.remove_absolute(base_path+file)
 	set_physics_process(true)
 	start = true
 
@@ -53,14 +64,25 @@ func _start_export_process() -> void:
 	var godot_path = OS.get_executable_path()
 	var export_args = ["--headless", "--export-debug", "debug", base_path + export_path]
 	var res = OS.execute(godot_path, export_args)
-	if res == OK:
-		set_physics_process(false)
 
 # Define the _on_button_pressed function (for button press event)
 func _on_button_pressed() -> void:
+	if Input.is_key_pressed(KEY_CTRL):
+		open_export_folder_in_file_explorer()
+		return
+	if start:
+		return
 	get_editor_interface().stop_playing_scene()
 	_kill_exported_process()
 	_cleanup_previous_exports()
+
+# Function to open the export folder in the file explorer
+func open_export_folder_in_file_explorer() -> void:
+	if export_folder == "":
+		push_error("Export folder is not set!")
+		return
+	# Open the folder in file explorer
+	OS.shell_open(export_folder)
 
 func _input(event: InputEvent) -> void:
 	if Input.is_physical_key_pressed(KEY_F7):
@@ -75,9 +97,9 @@ func _physics_process(delta: float) -> void:
 		_start_export_process()
 		return
 	start = false
-	start = false
-	pid = OS.create_process(base_path + console_exe, run_args)
-	set_physics_process(false)  # Disable physics process after running the exported game
+	set_physics_process(false)
+#	pid = OS.create_process(base_path + console_exe, run_args)
+
 
 func _kill_exported_process() -> void:
 	OS.kill(pid)
